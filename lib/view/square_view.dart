@@ -12,7 +12,7 @@ class SquareView extends StatelessWidget {
   final Point<int> point;
   const SquareView(this.point, {Key? key}) : super(key: key);
 
-  Widget blankSquare() => const Icon(Icons.square);
+  Widget blankSquare() => const Text('⬛');
 
   Widget _build(BuildContext context, Square? square) {
     final game = Provider.of<Game>(context, listen: false);
@@ -23,16 +23,16 @@ class SquareView extends StatelessWidget {
 
     if (!square.revealed) {
       return square.flagged
-          ? WidgetNumberView(const Icon(Icons.flag), square.flags)
+          ? WidgetNumberView(const Text('🚩'), square.flags)
           : blankSquare();
     }
 
     if (square.mines > 0) {
-      return WidgetNumberView(const Icon(Icons.error), square.mines);
+      return WidgetNumberView(const Text('💥'), square.mines);
     } else {
-      final neighborCount = game
-          .neighbors(point, game.shape)
-          .map((p) => game.board![p]!.mines)
+      final neighborCount = game.grid.info
+          .neighbors(point, game.grid.info.shape)
+          .map((p) => game.grid.board![p]!.mines)
           .reduce((x, y) => x + y);
 
       if (neighborCount > 0) {

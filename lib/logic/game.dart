@@ -2,11 +2,10 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
-import 'board_shape.dart';
+import 'game_grid.dart';
 import 'game_timer.dart';
-import 'generation_info.dart';
+import 'grid_info.dart';
 import 'square.dart';
-import 'variants.dart';
 
 enum GameState { notStarted, started, paused, lose, win }
 
@@ -16,44 +15,16 @@ class Game with ChangeNotifier {
   GameState _gameState = GameState.notStarted;
   GameState get gameState => _gameState;
 
-  final BoardShape shape;
-  final Map<int, int> mineNums;
-  final NeighborFunction neighbors;
-  final GenerationFunction _generateBoard;
+  final GameGrid grid;
 
   final GameTimer timer = GameTimer();
 
-  // Nullable, because no board makes sense prior to generation
-  Board? _board;
-  Board? get board => _board;
-
-  Game(
-      {required this.shape,
-      required this.mineNums,
-      NeighborFunction? neighbors,
-      generateBoard = simpleGenerateBoard})
-      : assert(!mineNums.containsKey(0)),
-        assert(mineNums.values.every((x) => x > 0)),
-        neighbors = neighbors ?? mooreNeighborhood,
-        _generateBoard = generateBoard;
+  Game(GridInfo info) : grid = GameGrid(info);
 
   void _generate(Point<int> safePoint) {
     assert(gameState == GameState.notStarted);
-    assert(mineNums.keys.reduce((x, y) => x + y) < shape.points.length,
-        "Too many mines");
-    assert(
-        shape.points.contains(safePoint), "Board does not contain safePoint");
 
-    final info = GenerationInfo(
-        boardShape: shape, mineNums: mineNums, safePoint: safePoint);
-
-    _board = Map.unmodifiable(_generateBoard(info));
-    final generatedPoints = _board!.keys.toSet();
-
-    assert(generatedPoints.difference(shape.points).isEmpty,
-        "Generated point outside of shape");
-    assert(shape.points.length == generatedPoints.length,
-        "Not all points in shape generated");
+    grid.generate(safePoint);
 
     _gameState = GameState.started;
 
@@ -62,55 +33,46 @@ class Game with ChangeNotifier {
     notifyListeners();
   }
 
-  void _reveal(Point<int> p) {
-    assert(gameState == GameState.started);
-
-    final sq = _board![p]!;
-
-    if (sq.revealed) return;
-
-    sq.reveal();
-
-    if (sq.mines > 0) {
+  bool _lossTest() {
+    if (grid.mineRevealed) {
       _gameState = GameState.lose;
 
-      for (Point p in shape.points) {
-        _board![p]!.reveal();
+      for (Point p in grid.info.shape.points) {
+        grid.board![p]!.reveal();
       }
 
       timer.stop();
 
       notifyListeners();
+
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  void _reveal(Point<int> p) {
+    assert(gameState == GameState.started);
+
+    grid.reveal(p);
+
+    if (_lossTest()) {
       return;
-    } else if (!board!.values.any((s) => s.mines == 0 && !s.revealed)) {
+    } else if (!grid.board!.values.any((s) => s.mines == 0 && !s.revealed)) {
       _gameState = GameState.win;
 
       timer.stop();
 
       notifyListeners();
     }
-
-    final ns = neighbors(p, shape);
-    if (ns.every((p) => _board![p]!.mines == 0)) {
-      ns.forEach(_reveal);
-    }
   }
 
   void _chord(Point<int> p) {
     assert(gameState == GameState.started);
 
-    assert(board![p]!.revealed);
+    grid.chord(p);
 
-    final neighborPoints = neighbors(p, shape);
-    final neighborSquares = neighborPoints.map((p) => board![p]!);
-    final neighborMines =
-        neighborSquares.map((s) => s.mines).reduce((x, y) => x + y);
-    final neighborFlags =
-        neighborSquares.map((s) => s.flags).reduce((x, y) => x + y);
-
-    if (neighborMines == neighborFlags) {
-      neighborPoints.where((p) => !board![p]!.flagged).forEach(_reveal);
-    }
+    _lossTest();
   }
 
   void leftClick(Point<int> p) {
@@ -120,7 +82,7 @@ class Game with ChangeNotifier {
         _reveal(p);
         break;
       case GameState.started:
-        final s = board![p]!;
+        final s = grid.board![p]!;
         if (!s.flagged) {
           if (s.revealed) {
             _chord(p);
@@ -136,7 +98,7 @@ class Game with ChangeNotifier {
 
   void rightClick(Point<int> p) {
     if (_gameState == GameState.started) {
-      board![p]!.flag();
+      grid.board![p]!.flag();
     }
   }
 

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../logic/game.dart';
-import 'game_grid.dart';
+import 'game_grid_view.dart';
 
 class Yippee extends StatelessWidget {
   final File loseFile = File('imgs/fuck.gif');
@@ -15,7 +15,7 @@ class Yippee extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<Game>(
-        child: const GameGrid(),
+        child: const GameGridView(),
         builder: (_, game, grid) {
           switch (game.gameState) {
             case GameState.win:
