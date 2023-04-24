@@ -39,7 +39,7 @@ class GameGrid with ChangeNotifier {
         "Not all points in shape generated");
   }
 
-  void reveal(Point<int> p) {
+  void reveal(Point<int> p, {bool notify = true}) {
     final sq = board![p]!;
 
     if (sq.revealed || sq.flagged) return;
@@ -52,8 +52,12 @@ class GameGrid with ChangeNotifier {
 
     final ns = info.neighbors(p, info.shape);
     if (ns.every((p) => board![p]!.mines == 0)) {
-      ns.forEach(reveal);
+      for (final p in ns) {
+        reveal(p, notify: false);
+      }
     }
+
+    if (notify) notifyListeners();
   }
 
   void chord(Point<int> p) {
@@ -67,8 +71,12 @@ class GameGrid with ChangeNotifier {
         neighborSquares.map((s) => s.flags).reduce((x, y) => x + y);
 
     if (neighborMines == neighborFlags) {
-      neighborPoints.forEach(reveal);
+      for (final p in neighborPoints) {
+        reveal(p, notify: false);
+      }
     }
+
+    notifyListeners();
   }
 
   void flag(Point<int> p) {
