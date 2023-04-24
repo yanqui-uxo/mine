@@ -17,8 +17,14 @@ class GameTimer with ChangeNotifier {
 
   void start() {
     _stopwatch.start();
-    _timer ??= RestartableTimer(
-        const Duration(milliseconds: tickMilliseconds), notifyListeners);
+
+    late RestartableTimer sampleTimer;
+    sampleTimer =
+        RestartableTimer(const Duration(milliseconds: tickMilliseconds), () {
+      notifyListeners();
+      sampleTimer.reset();
+    });
+    _timer ??= sampleTimer;
     _timer!.reset();
   }
 
